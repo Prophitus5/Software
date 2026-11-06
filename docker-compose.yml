@@ -1,0 +1,31 @@
+services:
+  firebird:
+    image: jacobalberty/firebird:v5.0
+    environment:
+      ISC_PASSWORD: ${DB_PASSWORD:-masterkey}
+      FIREBIRD_DATABASE: biblioteca.fdb
+      FIREBIRD_USER: ${DB_USER:-SYSDBA}
+      FIREBIRD_PASSWORD: ${DB_PASSWORD:-masterkey}
+    volumes:
+      - firebird_data:/firebird/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3050:3050"
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/local/firebird/bin/isql -user ${DB_USER:-SYSDBA} -password ${DB_PASSWORD:-masterkey} localhost:/firebird/data/biblioteca.fdb -q -e 'select 1 from rdb$$database' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DB_HOST: firebird
+      DB_PATH: /firebird/data/biblioteca.fdb
+    ports:
+      - "8000:8000"
+    depends_on:
+      firebird:
+        condition: service_healthy
+volumes:
+  firebird_data:
